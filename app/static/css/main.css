@@ -34,7 +34,7 @@ body {
   min-height: 100vh;
 }
 
-h1, h2, h3 { font-family: 'Syne', sans-serif; }
+h1, h2, h3 { font-family: 'Syne', Arial, sans-serif; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { color: var(--accent-hover); }
 input, select, textarea, button { font-family: inherit; font-size: 14px; }
