@@ -1,0 +1,461 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — TaskFlow{% endblock %}
+{% block content %}
+
+<div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar__brand">
+            <div class="auth-logo">TF</div>
+            <span>TaskFlow</span>
+        </div>
+        <nav class="sidebar__nav">
+            <a href="#" class="nav-item nav-item--active" data-view="dashboard">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                Dashboard
+            </a>
+            <a href="#" class="nav-item" data-view="tasks">
+                <svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                All Tasks
+            </a>
+            <a href="#" class="nav-item" data-view="analytics">
+                <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                Analytics
+            </a>
+        </nav>
+        <div class="sidebar__user">
+            <div class="user-avatar">{{ user.username[0].upper() }}</div>
+            <div class="user-info">
+                <span class="user-name">{{ user.username }}</span>
+                <span class="user-email">{{ user.email }}</span>
+            </div>
+            <a href="{{ url_for('auth.logout') }}" class="logout-btn" title="Logout">
+                <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </a>
+        </div>
+        <div id="wsStatus" class="ws-status ws-status--connecting">
+            <span class="ws-dot"></span><span>Connecting…</span>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Toast notifications -->
+        <div id="toastContainer" class="toast-container"></div>
+
+        <!-- Dashboard View -->
+        <div id="view-dashboard" class="view active">
+            <header class="page-header">
+                <div>
+                    <h1>Good day, {{ user.username }} 👋</h1>
+                    <p>Here's your task overview</p>
+                </div>
+                <button class="btn btn--primary" onclick="openModal()">+ New Task</button>
+            </header>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card stat-card--total"><div class="stat-label">Total Tasks</div><div class="stat-value" id="stat-total">—</div></div>
+                <div class="stat-card stat-card--done"><div class="stat-label">Completed</div><div class="stat-value" id="stat-completed">—</div></div>
+                <div class="stat-card stat-card--pending"><div class="stat-label">Pending</div><div class="stat-value" id="stat-pending">—</div></div>
+                <div class="stat-card stat-card--progress"><div class="stat-label">In Progress</div><div class="stat-value" id="stat-progress">—</div></div>
+            </div>
+
+            <!-- Completion bar -->
+            <div class="completion-card">
+                <div class="completion-header">
+                    <span>Completion Rate</span>
+                    <span class="completion-pct" id="completionPct">0%</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+            </div>
+
+            <!-- Recent Tasks -->
+            <div class="section-header">
+                <h2>Recent Tasks</h2>
+                <a href="#" class="view-all" data-view="tasks">View all →</a>
+            </div>
+            <div id="recentTasks" class="task-list"></div>
+        </div>
+
+        <!-- Tasks View -->
+        <div id="view-tasks" class="view">
+            <header class="page-header">
+                <div>
+                    <h1>All Tasks</h1>
+                    <p>Manage and track your work</p>
+                </div>
+                <button class="btn btn--primary" onclick="openModal()">+ New Task</button>
+            </header>
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label>Status</label>
+                    <select id="filterStatus" onchange="loadTasks()">
+                        <option value="">All</option>
+                        <option value="pending">Pending</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Priority</label>
+                    <select id="filterPriority" onchange="loadTasks()">
+                        <option value="">All</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+            </div>
+            <div id="allTasks" class="task-list"></div>
+        </div>
+
+        <!-- Analytics View -->
+        <div id="view-analytics" class="view">
+            <header class="page-header">
+                <div><h1>Analytics</h1><p>Insights from your task data</p></div>
+            </header>
+            <div class="analytics-grid">
+                <div class="chart-card">
+                    <h3>Priority Distribution</h3>
+                    <div class="bar-chart" id="priorityChart"></div>
+                </div>
+                <div class="chart-card">
+                    <h3>Status Overview</h3>
+                    <div class="donut-wrap" id="donutChart"></div>
+                </div>
+                <div class="chart-card chart-card--wide">
+                    <h3>Completion Trend (Last 7 Days)</h3>
+                    <div class="line-chart" id="trendChart"></div>
+                </div>
+            </div>
+            <div class="analytics-extras" id="analyticsExtras"></div>
+        </div>
+    </main>
+</div>
+
+<!-- Task Modal -->
+<div id="taskModal" class="modal-overlay hidden">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="modalTitle">New Task</h3>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editTaskId">
+            <div class="form-group">
+                <label>Title <span class="required">*</span></label>
+                <input type="text" id="taskTitle" placeholder="What needs to be done?" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="taskDescription" placeholder="Add more details..." rows="3"></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Priority</label>
+                    <select id="taskPriority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="taskStatus">
+                        <option value="pending" selected>Pending</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Due Date</label>
+                <input type="datetime-local" id="taskDueDate">
+            </div>
+            <div id="modalError" class="form-error hidden"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn--ghost" onclick="closeModal()">Cancel</button>
+            <button class="btn btn--primary" id="saveTaskBtn" onclick="saveTask()">Save Task</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ---- WebSocket Setup ----
+const socket = { on: function(){}, emit: function(){} };
+const wsStatus = document.getElementById('wsStatus');
+
+socket.on('connect', () => {
+    wsStatus.className = 'ws-status ws-status--connected';
+    wsStatus.innerHTML = '<span class="ws-dot"></span><span>Live</span>';
+    socket.emit('join');
+});
+socket.on('disconnect', () => {
+    wsStatus.className = 'ws-status ws-status--disconnected';
+    wsStatus.innerHTML = '<span class="ws-dot"></span><span>Offline</span>';
+});
+socket.on('task_created', (d) => { toast(`Task "${d.task.title}" created`, 'success'); refreshAll(); });
+socket.on('task_updated', (d) => { toast(`Task "${d.task.title}" updated`, 'info'); refreshAll(); });
+socket.on('task_deleted', (d) => { toast(`Task deleted`, 'warning'); refreshAll(); });
+
+// ---- Navigation ----
+let currentView = 'dashboard';
+document.querySelectorAll('[data-view]').forEach(el => {
+    el.addEventListener('click', (e) => { e.preventDefault(); switchView(el.dataset.view); });
+});
+
+function switchView(view) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('nav-item--active'));
+    document.getElementById(`view-${view}`).classList.add('active');
+    document.querySelector(`[data-view="${view}"]`).classList.add('nav-item--active');
+    currentView = view;
+    if (view === 'analytics') loadAnalytics();
+    if (view === 'tasks') loadTasks();
+    if (view === 'dashboard') { loadStats(); loadRecentTasks(); }
+}
+
+// ---- API Helpers ----
+async function api(method, path, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(path, opts);
+    return res.json();
+}
+
+// ---- Tasks ----
+let allTasksCache = [];
+
+async function loadTasks() {
+    const status = document.getElementById('filterStatus')?.value || '';
+    const priority = document.getElementById('filterPriority')?.value || '';
+    let url = '/api/tasks/?per_page=100';
+    if (status) url += `&status=${status}`;
+    if (priority) url += `&priority=${priority}`;
+    const data = await api('GET', url);
+    allTasksCache = data.tasks || [];
+    renderTasks(allTasksCache, 'allTasks');
+}
+
+async function loadRecentTasks() {
+    const data = await api('GET', '/api/tasks/?per_page=5');
+    renderTasks(data.tasks || [], 'recentTasks');
+}
+
+function renderTasks(tasks, containerId) {
+    const container = document.getElementById(containerId);
+    if (!tasks.length) {
+        container.innerHTML = '<div class="empty-state"><p>No tasks found. Create your first task!</p></div>';
+        return;
+    }
+    container.innerHTML = tasks.map(t => `
+        <div class="task-card" data-id="${t.id}">
+            <div class="task-card__left">
+                <button class="task-check ${t.status === 'completed' ? 'checked' : ''}" onclick="quickToggle(${t.id}, '${t.status}')">
+                    ${t.status === 'completed' ? '✓' : ''}
+                </button>
+                <div class="task-info">
+                    <div class="task-title ${t.status === 'completed' ? 'strikethrough' : ''}">${escHtml(t.title)}</div>
+                    ${t.description ? `<div class="task-desc">${escHtml(t.description.substring(0,80))}${t.description.length > 80 ? '…' : ''}</div>` : ''}
+                    <div class="task-meta">
+                        <span class="badge badge--${t.priority}">${t.priority}</span>
+                        <span class="badge badge--status badge--${t.status.replace('_','-')}">${t.status.replace('_',' ')}</span>
+                        <span class="task-date">${formatDate(t.created_at)}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="task-actions">
+                <button class="icon-btn" onclick="editTask(${t.id})" title="Edit">✎</button>
+                <button class="icon-btn icon-btn--danger" onclick="deleteTask(${t.id})" title="Delete">✕</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function quickToggle(id, currentStatus) {
+    const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+    await api('PUT', `/api/tasks/${id}`, { status: newStatus });
+}
+
+async function deleteTask(id) {
+    if (!confirm('Delete this task?')) return;
+    await api('DELETE', `/api/tasks/${id}`);
+}
+
+async function editTask(id) {
+    const data = await api('GET', `/api/tasks/${id}`);
+    const t = data.task;
+    document.getElementById('modalTitle').textContent = 'Edit Task';
+    document.getElementById('editTaskId').value = t.id;
+    document.getElementById('taskTitle').value = t.title;
+    document.getElementById('taskDescription').value = t.description || '';
+    document.getElementById('taskPriority').value = t.priority;
+    document.getElementById('taskStatus').value = t.status;
+    document.getElementById('taskDueDate').value = t.due_date ? t.due_date.slice(0,16) : '';
+    openModal();
+}
+
+// ---- Stats ----
+async function loadStats() {
+    const data = await api('GET', '/api/analytics/summary');
+    if (!data || !data.success) return;
+    console.log('Stats loaded:', data.analytics);
+    const a = data.analytics;
+    document.getElementById('stat-total').textContent = a.total_tasks;
+    document.getElementById('stat-completed').textContent = a.completed_tasks;
+    document.getElementById('stat-pending').textContent = a.pending_tasks;
+    document.getElementById('stat-progress').textContent = a.in_progress_tasks;
+    document.getElementById('completionPct').textContent = a.completion_percentage + '%';
+    document.getElementById('progressFill').style.width = a.completion_percentage + '%';
+}
+
+// ---- Analytics Charts ----
+async function loadAnalytics() {
+    const data = await api('GET', '/api/analytics/summary');
+    if (!data.success) return;
+    const a = data.analytics;
+    renderPriorityChart(a.priority_breakdown, a.total_tasks);
+    renderDonut(a.status_breakdown);
+    renderTrend(a.completion_trend);
+    renderExtras(a);
+}
+
+function renderPriorityChart(pb, total) {
+    const el = document.getElementById('priorityChart');
+    const colors = { high: '#ef4444', medium: '#f59e0b', low: '#10b981' };
+    el.innerHTML = Object.entries(pb).map(([key, val]) => {
+        const pct = total ? Math.round((val / total) * 100) : 0;
+        return `<div class="bar-row">
+            <span class="bar-label">${key}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${colors[key]}"></div></div>
+            <span class="bar-val">${val}</span>
+        </div>`;
+    }).join('');
+}
+
+function renderDonut(sb) {
+    const el = document.getElementById('donutChart');
+    const colors = { completed: '#10b981', in_progress: '#3b82f6', pending: '#f59e0b' };
+    const total = Object.values(sb).reduce((s, v) => s + v, 0) || 1;
+    let offset = 0;
+    const segments = Object.entries(sb).map(([key, val]) => {
+        const pct = (val / total) * 100;
+        const seg = `<circle cx="60" cy="60" r="45" fill="none" stroke="${colors[key]}" stroke-width="18"
+            stroke-dasharray="${pct * 2.827} ${(100 - pct) * 2.827}"
+            stroke-dashoffset="${-offset * 2.827}" transform="rotate(-90 60 60)"/>`;
+        offset += pct;
+        return { seg, key, val, color: colors[key] };
+    });
+    el.innerHTML = `<svg viewBox="0 0 120 120" style="width:160px;height:160px">
+        ${segments.map(s => s.seg).join('')}
+        <text x="60" y="55" text-anchor="middle" font-size="16" font-weight="700" fill="var(--text)">${total}</text>
+        <text x="60" y="72" text-anchor="middle" font-size="9" fill="var(--text-muted)">tasks</text>
+    </svg>
+    <div class="donut-legend">${segments.map(s => `<div class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.key.replace('_',' ')} (${s.val})</div>`).join('')}</div>`;
+}
+
+function renderTrend(trend) {
+    const el = document.getElementById('trendChart');
+    const max = Math.max(...trend.map(t => t.count), 1);
+    el.innerHTML = `<div class="trend-bars">${trend.map(t => {
+        const h = max > 0 ? Math.round((t.count / max) * 100) : 0;
+        return `<div class="trend-col">
+            <div class="trend-bar-wrap"><div class="trend-bar" style="height:${h}%" title="${t.count} completed"></div></div>
+            <span class="trend-label">${t.day}</span>
+        </div>`;
+    }).join('')}</div>`;
+}
+
+function renderExtras(a) {
+    document.getElementById('analyticsExtras').innerHTML = `
+        <div class="extra-stat"><div class="extra-val">${a.tasks_this_week}</div><div class="extra-label">Tasks This Week</div></div>
+        <div class="extra-stat"><div class="extra-val">${a.avg_tasks_per_day}</div><div class="extra-label">Avg Tasks / Day</div></div>
+        <div class="extra-stat"><div class="extra-val">${a.completion_percentage}%</div><div class="extra-label">Completion Rate</div></div>
+    `;
+}
+
+// ---- Modal ----
+function openModal() {
+    document.getElementById('taskModal').classList.remove('hidden');
+}
+function closeModal() {
+    document.getElementById('taskModal').classList.add('hidden');
+    document.getElementById('editTaskId').value = '';
+    document.getElementById('taskTitle').value = '';
+    document.getElementById('taskDescription').value = '';
+    document.getElementById('taskPriority').value = 'medium';
+    document.getElementById('taskStatus').value = 'pending';
+    document.getElementById('taskDueDate').value = '';
+    document.getElementById('modalTitle').textContent = 'New Task';
+    document.getElementById('modalError').classList.add('hidden');
+}
+
+async function saveTask() {
+    const btn = document.getElementById('saveTaskBtn');
+    const err = document.getElementById('modalError');
+    const id = document.getElementById('editTaskId').value;
+    const title = document.getElementById('taskTitle').value.trim();
+    if (!title) { err.textContent = 'Title is required.'; err.classList.remove('hidden'); return; }
+    err.classList.add('hidden');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    const payload = {
+        title,
+        description: document.getElementById('taskDescription').value.trim(),
+        priority: document.getElementById('taskPriority').value,
+        status: document.getElementById('taskStatus').value,
+        due_date: document.getElementById('taskDueDate').value || null,
+    };
+    const res = id
+        ? await api('PUT', `/api/tasks/${id}`, payload)
+        : await api('POST', '/api/tasks/', payload);
+    btn.disabled = false;
+    btn.textContent = 'Save Task';
+    if (res.success) {
+        closeModal();
+    } else {
+        err.textContent = res.message || 'Something went wrong.';
+        err.classList.remove('hidden');
+    }
+}
+
+// ---- Utilities ----
+function refreshAll() {
+    loadStats();
+    if (currentView === 'tasks') loadTasks();
+    if (currentView === 'dashboard') loadRecentTasks();
+    if (currentView === 'analytics') loadAnalytics();
+}
+
+function toast(msg, type = 'info') {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast toast--${type}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => t.classList.add('show'), 10);
+    setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3000);
+}
+
+function formatDate(iso) {
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close modal on overlay click
+document.getElementById('taskModal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeModal();
+});
+
+// Init
+document.addEventListener('DOMContentLoaded', function() {
+    loadStats();
+    loadRecentTasks();
+});
+</script>
+{% endblock %}

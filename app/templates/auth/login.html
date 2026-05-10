@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Login — TaskFlow{% endblock %}
+{% block content %}
+<div class="auth-page">
+    <div class="auth-brand">
+        <div class="auth-logo">TF</div>
+        <h1>TaskFlow</h1>
+        <p>Manage your work, beautifully.</p>
+    </div>
+    <div class="auth-card">
+        <h2>Welcome back</h2>
+        <p class="auth-sub">Sign in to your workspace</p>
+        <form id="loginForm" class="auth-form">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="email" name="email" placeholder="you@example.com" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" name="password" placeholder="••••••••" required>
+            </div>
+            <div id="loginError" class="form-error hidden"></div>
+            <button type="submit" class="btn btn--primary btn--full" id="loginBtn">
+                <span>Sign In</span>
+            </button>
+        </form>
+        <p class="auth-footer">Don't have an account? <a href="{{ url_for('auth.register') }}">Create one</a></p>
+    </div>
+</div>
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    const err = document.getElementById('loginError');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+    err.classList.add('hidden');
+    const res = await fetch('/auth/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value,
+        })
+    });
+    const data = await res.json();
+    if (data.success) {
+        window.location.href = '/dashboard';
+    } else {
+        err.textContent = data.message;
+        err.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '<span>Sign In</span>';
+    }
+});
+</script>
+{% endblock %}
